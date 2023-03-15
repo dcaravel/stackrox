@@ -238,8 +238,8 @@ func (e *enricher) runScan(req *scanImageRequest) imageChanResult {
 	}
 
 	fn := ""
-	if img != nil && img.Name != nil {
-		fn = img.Name.FullName
+	if result.image != nil && result.image.GetName() != nil {
+		fn = result.image.GetName().GetFullName()
 	} else {
 		log.Debugf("image full name is nil, %+v", img)
 	}
