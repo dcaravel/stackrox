@@ -225,10 +225,14 @@ func (e *enricher) runScan(req *scanImageRequest) imageChanResult {
 	if forceEnrichImageWithSignatures || newValue == value {
 		value.scanAndSet(concurrency.AsContext(&e.stopSig), e.imageSvc, req)
 	}
-	return imageChanResult{
+
+	result := imageChanResult{
 		image:        value.waitAndGet(),
 		containerIdx: req.containerIdx,
 	}
+
+	log.Debugf("image scan has finished from %q, img %q, cache len %q", req.namespace, img.Name.FullName, len(e.imageCache.GetAll()))
+	return result
 }
 
 type scanImageRequest struct {
