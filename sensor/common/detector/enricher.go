@@ -206,13 +206,16 @@ func (e *enricher) runScan(req *scanImageRequest) imageChanResult {
 
 	img, ok := e.getImageFromCache(key)
 	if ok {
+		log.Debugf("cache hit for image %q", req.containerImage.GetName())
 		// If the container image name is already within the cached images names, we can short-circuit.
 		if protoutils.SliceContains(req.containerImage.GetName(), img.GetNames()) {
+			log.Debugf("returning cached entry for image %q", req.containerImage.GetName())
 			return imageChanResult{
 				image:        img,
 				containerIdx: req.containerIdx,
 			}
 		}
+		log.Debugf("skipping cached entry for image %q", req.containerImage.GetName())
 		// We found an image that is already in cache (i.e. with the same digest), but the image name is different.
 		// Ensuring we have a fully enriched image (especially regarding image signatures), we need to make sure to
 		// scan this image once more. This should result in the signatures + signature verification being re-done.
