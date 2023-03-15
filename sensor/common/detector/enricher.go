@@ -2,6 +2,7 @@ package detector
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/cenkalti/backoff/v3"
@@ -231,7 +232,24 @@ func (e *enricher) runScan(req *scanImageRequest) imageChanResult {
 		containerIdx: req.containerIdx,
 	}
 
-	log.Debugf("image scan has finished from %q, img %q, cache len %q", req.namespace, img.Name.FullName, len(e.imageCache.GetAll()))
+	ns := ""
+	if req != nil {
+		ns = req.namespace
+	}
+
+	fn := ""
+	if img != nil && img.Name != nil {
+		fn = img.Name.FullName
+	} else {
+		log.Debugf("image full name is nil, %+v", img)
+	}
+
+	cacheSize := ""
+	if e.imageCache != nil {
+		cacheSize = fmt.Sprintf("%d", len(e.imageCache.GetAll()))
+	}
+
+	log.Debugf("image scan has finished from %q, img %q, cache len %q", ns, fn, cacheSize)
 	return result
 }
 

@@ -12,6 +12,7 @@ import (
 	"github.com/stackrox/rox/pkg/expiringcache"
 	grpcPkg "github.com/stackrox/rox/pkg/grpc"
 	"github.com/stackrox/rox/pkg/grpc/authz/idcheck"
+	"github.com/stackrox/rox/pkg/logging"
 	"github.com/stackrox/rox/pkg/registries/docker"
 	registryTypes "github.com/stackrox/rox/pkg/registries/types"
 	"github.com/stackrox/rox/pkg/tlscheck"
@@ -19,6 +20,10 @@ import (
 	"github.com/stackrox/rox/sensor/common/registry"
 	"github.com/stackrox/rox/sensor/common/scan"
 	"google.golang.org/grpc"
+)
+
+var (
+	log = logging.LoggerForModule()
 )
 
 // Service is an interface to receiving image scan results for the Admission Controller.
@@ -80,6 +85,7 @@ func (s *serviceImpl) GetImage(ctx context.Context, req *sensor.GetImageRequest)
 		}, nil
 	}
 
+	log.Debugf("admission control scan requested for %+v", *req.GetImage())
 	var err error
 	var img *storage.Image
 	if req.GetImage().GetIsClusterLocal() {
