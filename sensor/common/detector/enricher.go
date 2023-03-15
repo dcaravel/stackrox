@@ -232,6 +232,8 @@ func (e *enricher) runScan(req *scanImageRequest) imageChanResult {
 		containerIdx: req.containerIdx,
 	}
 
+	log.Debugf("BEFORE CRASH")
+
 	ns := ""
 	if req != nil {
 		ns = req.namespace
