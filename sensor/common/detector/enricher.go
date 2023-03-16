@@ -245,13 +245,6 @@ func (e *enricher) runScan(req *scanImageRequest) imageChanResult {
 		containerIdx: req.containerIdx,
 	}
 
-	cacheSize := ""
-	if e.imageCache != nil {
-		cacheSize = fmt.Sprintf("%d", len(e.imageCache.GetAll()))
-	} else {
-		log.Debugf("runScan [%v] IMAGE CACHE IS NUL *****************", key)
-	}
-
 	newKey := imagecacheutils.GetImageCacheKey(result.image)
 	if newKey != key {
 		log.Errorf("ERROR - old and new cache keys do not match %q %q %q", key, newKey, fullN)
@@ -262,14 +255,20 @@ func (e *enricher) runScan(req *scanImageRequest) imageChanResult {
 	}
 
 	if result.image.Scan == nil {
-		log.Debugf("runScan [%v] results: %+v", key, result.image.Scan)
+		log.Debugf("runScan [%v] results: %+v, not caching due to missing scan", key, result.image.Scan)
+		e.imageCache.Remove(key)
 	} else {
 		s := result.image.Scan
-		comps := s.Components
+		comps := len(s.Components)
 		notes := s.Notes
 		log.Debugf("runScan [%v] results: %+v, notes: %+v, components: %+v", key, s, notes, comps)
+		if comps == 0 {
+			log.Debugf("runScan [%v] not caching due to no components", key)
+			e.imageCache.Remove(key)
+		}
 	}
 
+	cacheSize := fmt.Sprintf("%d", len(e.imageCache.GetAll()))
 	log.Debugf("runScan [%v] finished %q cache len %q", key, fullN, cacheSize)
 	return result
 }

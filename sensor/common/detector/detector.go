@@ -313,6 +313,7 @@ func (d *detectorImpl) runDetector() {
 		case <-d.detectorStopper.Flow().StopRequested():
 			return
 		case scanOutput := <-d.enricher.outputChan():
+			log.Debugf("scanOutput deployment [%v %v]: %+v", scanOutput.deployment.Name, scanOutput.deployment.Namespace, scanOutput)
 			alerts := d.unifiedDetector.DetectDeployment(deploytime.DetectionContext{}, booleanpolicy.EnhancedDeployment{
 				Deployment:             scanOutput.deployment,
 				Images:                 scanOutput.images,
@@ -322,6 +323,8 @@ func (d *detectorImpl) runDetector() {
 			sort.Slice(alerts, func(i, j int) bool {
 				return alerts[i].GetPolicy().GetId() < alerts[j].GetPolicy().GetId()
 			})
+
+			log.Debugf("scanOutput deployment [%v %v]: alerts: %+v", scanOutput.deployment.Name, scanOutput.deployment.Namespace, alerts)
 
 			select {
 			case <-d.detectorStopper.Flow().StopRequested():
