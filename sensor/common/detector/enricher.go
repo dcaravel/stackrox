@@ -211,7 +211,7 @@ func (e *enricher) runScan(req *scanImageRequest) imageChanResult {
 
 	img, ok := e.getImageFromCache(key)
 	if ok {
-		log.Debugf("runScan [%v] - cache hit image %q", key, fullN)
+		log.Debugf("runScan [%v] - cache hit %q", key, fullN)
 		// If the container image name is already within the cached images names, we can short-circuit.
 		if protoutils.SliceContains(req.containerImage.GetName(), img.GetNames()) {
 			log.Debugf("runScan [%v] - returning cached entry %q", key, fullN)
@@ -234,7 +234,7 @@ func (e *enricher) runScan(req *scanImageRequest) imageChanResult {
 	}
 	value := e.imageCache.GetOrSet(key, newValue).(*cacheValue)
 	if forceEnrichImageWithSignatures || newValue == value {
-		log.Debugf("runScan [%v] scanning %q %q", key, fullN)
+		log.Debugf("runScan [%v] scanning %q", key, fullN)
 		value.scanAndSet(concurrency.AsContext(&e.stopSig), e.imageSvc, req)
 	} else {
 		log.Debugf("runScan [%v] SKIPPING scanning %q, forceEnrichImageWithSigs %q newVal==value %q", key, fullN, forceEnrichImageWithSignatures, newValue == value)
@@ -260,6 +260,9 @@ func (e *enricher) runScan(req *scanImageRequest) imageChanResult {
 	if fullN != result.image.GetName().FullName {
 		log.Errorf("ERROR - old and new names do not match %q %q %q", key, fullN, result.image.GetName())
 	}
+
+	log.Debugf("runScan [%v] results: %+v", key, result.image.Scan)
+
 	log.Debugf("runScan [%v] finished %q cache len %q", key, fullN, cacheSize)
 	return result
 }
