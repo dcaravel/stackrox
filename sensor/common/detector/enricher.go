@@ -189,9 +189,11 @@ func (e *enricher) runScan(req *scanImageRequest) imageChanResult {
 	// In case of image full name, we can skip. In case of image ID, we should make sure to check if the image's name
 	// is equal / contained in the images `Names` field.
 	key := imagecacheutils.GetImageCacheKey(req.containerImage)
+	log.Debugf("cache key %q for %q", key, *req.containerImage)
 
 	// If the container image says that the image is not pullable, don't even bother trying to scan
 	if req.containerImage.GetNotPullable() {
+		log.Debugf("image not pullable %q", *req.containerImage)
 		return imageChanResult{
 			image:        types.ToImage(req.containerImage),
 			containerIdx: req.containerIdx,
@@ -206,7 +208,7 @@ func (e *enricher) runScan(req *scanImageRequest) imageChanResult {
 
 	img, ok := e.getImageFromCache(key)
 	if ok {
-		log.Debugf("cache hit for image %q", req.containerImage.GetName())
+		log.Debugf("cache hit key %q, image %q", key, req.containerImage.GetName())
 		// If the container image name is already within the cached images names, we can short-circuit.
 		if protoutils.SliceContains(req.containerImage.GetName(), img.GetNames()) {
 			log.Debugf("returning cached entry for image %q", req.containerImage.GetName())
@@ -220,6 +222,8 @@ func (e *enricher) runScan(req *scanImageRequest) imageChanResult {
 		// Ensuring we have a fully enriched image (especially regarding image signatures), we need to make sure to
 		// scan this image once more. This should result in the signatures + signature verification being re-done.
 		forceEnrichImageWithSignatures = true
+	} else {
+		log.Debugf("cache miss %q key, image %q", key, req.containerImage.GetName())
 	}
 
 	newValue := &cacheValue{
@@ -227,6 +231,7 @@ func (e *enricher) runScan(req *scanImageRequest) imageChanResult {
 	}
 	value := e.imageCache.GetOrSet(key, newValue).(*cacheValue)
 	if forceEnrichImageWithSignatures || newValue == value {
+		log.Debugf("starting scan, vals: %q %q", forceEnrichImageWithSignatures, newValue == value)
 		value.scanAndSet(concurrency.AsContext(&e.stopSig), e.imageSvc, req)
 	}
 
@@ -256,7 +261,8 @@ func (e *enricher) runScan(req *scanImageRequest) imageChanResult {
 		cacheSize = fmt.Sprintf("%d", len(e.imageCache.GetAll()))
 	}
 
-	log.Debugf("image scan has finished from %q, img %q, cache len %q", ns, fn, cacheSize)
+	newKey := imagecacheutils.GetImageCacheKey(result.image)
+	log.Debugf("image scan has finished key %q, newKey %q, from %q, img %q, cache len %q", key, newKey, ns, fn, cacheSize)
 	return result
 }
 
@@ -284,7 +290,7 @@ func (e *enricher) getImages(deployment *storage.Deployment) []*storage.Image {
 		pullSecrets = pullSecretsSet.AsSlice()
 	}
 	for idx, container := range deployment.GetContainers() {
-		log.Debugf("DAVE: starting scan - %q - %q - %q", deployment.Id, deployment.GetNamespace(), container.GetImage())
+		log.Debugf("DAVE: starting scan - %q - %q - %q - %q", deployment.Id, deployment.GetNamespace(), deployment.GetName(), container.GetImage())
 		e.runImageScanAsync(imageChan, &scanImageRequest{
 			containerIdx:   idx,
 			containerImage: container.GetImage(),
@@ -306,6 +312,8 @@ func (e *enricher) getImages(deployment *storage.Deployment) []*storage.Image {
 		// exact same ID
 		image.Name = deployment.Containers[imgResult.containerIdx].GetImage().GetName()
 		images[imgResult.containerIdx] = &image
+
+		log.Debugf("DAVE: done scanning - %q - %q - %q - %q", deployment.Id, deployment.GetNamespace(), deployment.GetName(), image.GetName())
 	}
 	return images
 }
