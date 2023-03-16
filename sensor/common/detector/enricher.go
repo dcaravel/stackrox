@@ -261,7 +261,14 @@ func (e *enricher) runScan(req *scanImageRequest) imageChanResult {
 		log.Errorf("ERROR - old and new names do not match %q %q %q", key, fullN, result.image.GetName())
 	}
 
-	log.Debugf("runScan [%v] results: %+v", key, result.image.Scan)
+	if result.image.Scan == nil {
+		log.Debugf("runScan [%v] results: %+v", key, result.image.Scan)
+	} else {
+		s := result.image.Scan
+		comps := s.Components
+		notes := s.Notes
+		log.Debugf("runScan [%v] results: %+v, notes: %+v, components: %+v", key, s, notes, comps)
+	}
 
 	log.Debugf("runScan [%v] finished %q cache len %q", key, fullN, cacheSize)
 	return result
