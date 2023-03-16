@@ -158,6 +158,7 @@ func (c *cacheValue) scanAndSet(ctx context.Context, svc v1.ImageServiceClient, 
 
 	scannedImage, err := scanWithRetries(ctx, svc, req, scanImageFn)
 	if err != nil {
+		log.Debugf("scanAndSet [%v] - ERROR scanning: %v", req.containerImage.GetName().FullName, err)
 		// Ignore the error and set the image to something basic,
 		// so alerting can progress.
 		c.image = types.ToImage(req.containerImage)
