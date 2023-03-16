@@ -185,15 +185,17 @@ func (e *enricher) getImageFromCache(key string) (*storage.Image, bool) {
 }
 
 func (e *enricher) runScan(req *scanImageRequest) imageChanResult {
+
+	fullN := req.containerImage.GetName().FullName
 	// Cache key is either going to be image full name or image ID.
 	// In case of image full name, we can skip. In case of image ID, we should make sure to check if the image's name
 	// is equal / contained in the images `Names` field.
 	key := imagecacheutils.GetImageCacheKey(req.containerImage)
-	log.Debugf("cache key %q for %q", key, *req.containerImage)
+	log.Debugf("runScan [%v] - start - %q", key, fullN)
 
 	// If the container image says that the image is not pullable, don't even bother trying to scan
 	if req.containerImage.GetNotPullable() {
-		log.Debugf("image not pullable %q", *req.containerImage)
+		log.Debugf("runScan [%v] - image not pullable %q", key, fullN)
 		return imageChanResult{
 			image:        types.ToImage(req.containerImage),
 			containerIdx: req.containerIdx,
@@ -208,22 +210,22 @@ func (e *enricher) runScan(req *scanImageRequest) imageChanResult {
 
 	img, ok := e.getImageFromCache(key)
 	if ok {
-		log.Debugf("cache hit key %q, image %q", key, req.containerImage.GetName())
+		log.Debugf("runScan [%v] - cache hit image %q", key, fullN)
 		// If the container image name is already within the cached images names, we can short-circuit.
 		if protoutils.SliceContains(req.containerImage.GetName(), img.GetNames()) {
-			log.Debugf("returning cached entry for image %q", req.containerImage.GetName())
+			log.Debugf("runScan [%v] - returning cached entry %q", fullN)
 			return imageChanResult{
 				image:        img,
 				containerIdx: req.containerIdx,
 			}
 		}
-		log.Debugf("skipping cached entry for image %q", req.containerImage.GetName())
+		log.Debugf("runScan [%v] - SKIPPING CACHE %q", fullN)
 		// We found an image that is already in cache (i.e. with the same digest), but the image name is different.
 		// Ensuring we have a fully enriched image (especially regarding image signatures), we need to make sure to
 		// scan this image once more. This should result in the signatures + signature verification being re-done.
 		forceEnrichImageWithSignatures = true
 	} else {
-		log.Debugf("cache miss %q key, image %q", key, req.containerImage.GetName())
+		log.Debugf("runScan [%v] - cache MISS %q", key, fullN)
 	}
 
 	newValue := &cacheValue{
@@ -231,8 +233,10 @@ func (e *enricher) runScan(req *scanImageRequest) imageChanResult {
 	}
 	value := e.imageCache.GetOrSet(key, newValue).(*cacheValue)
 	if forceEnrichImageWithSignatures || newValue == value {
-		log.Debugf("starting scan, vals: %q %q", forceEnrichImageWithSignatures, newValue == value)
+		log.Debugf("runScan [%v] scanning %q %q", key, fullN)
 		value.scanAndSet(concurrency.AsContext(&e.stopSig), e.imageSvc, req)
+	} else {
+		log.Debugf("runScan [%v] SKIPPING scanning %q, forceEnrichImageWithSigs %q newVal==value %q", key, fullN, forceEnrichImageWithSignatures, newValue == value)
 	}
 
 	result := imageChanResult{
@@ -240,29 +244,22 @@ func (e *enricher) runScan(req *scanImageRequest) imageChanResult {
 		containerIdx: req.containerIdx,
 	}
 
-	ns := ""
-	if req != nil {
-		ns = req.namespace
-	}
-
-	fn := ""
-	if result.image != nil && result.image.GetName() != nil {
-		fn = result.image.GetName().GetFullName()
-		// comps = int(result.image.GetComponents())
-
-		// numCVEs := result.image.GetCves()
-		// result.image.GetComponents()
-	} else {
-		log.Debugf("image full name is nil, %+v", img)
-	}
-
 	cacheSize := ""
 	if e.imageCache != nil {
 		cacheSize = fmt.Sprintf("%d", len(e.imageCache.GetAll()))
+	} else {
+		log.Debugf("runScan [%v] IMAGE CACHE IS NUL *****************", key)
 	}
 
 	newKey := imagecacheutils.GetImageCacheKey(result.image)
-	log.Debugf("image scan has finished key %q, newKey %q, from %q, img %q, cache len %q", key, newKey, ns, fn, cacheSize)
+	if newKey != key {
+		log.Errorf("ERROR - old and new cache keys do not match %q %q %q", key, newKey, fullN)
+	}
+
+	if fullN != result.image.GetName().FullName {
+		log.Errorf("ERROR - old and new names do not match %q %q %q", key, fullN, result.image.GetName())
+	}
+	log.Debugf("runScan [%v] finished %q cache len %q", key, fullN, cacheSize)
 	return result
 }
 
