@@ -243,6 +243,10 @@ func (e *enricher) runScan(req *scanImageRequest) imageChanResult {
 	fn := ""
 	if result.image != nil && result.image.GetName() != nil {
 		fn = result.image.GetName().GetFullName()
+		// comps = int(result.image.GetComponents())
+
+		// numCVEs := result.image.GetCves()
+		// result.image.GetComponents()
 	} else {
 		log.Debugf("image full name is nil, %+v", img)
 	}
@@ -280,6 +284,7 @@ func (e *enricher) getImages(deployment *storage.Deployment) []*storage.Image {
 		pullSecrets = pullSecretsSet.AsSlice()
 	}
 	for idx, container := range deployment.GetContainers() {
+		log.Debugf("DAVE: starting scan - %q - %q - %q", deployment.Id, deployment.GetNamespace(), container.GetImage())
 		e.runImageScanAsync(imageChan, &scanImageRequest{
 			containerIdx:   idx,
 			containerImage: container.GetImage(),

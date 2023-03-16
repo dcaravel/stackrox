@@ -442,6 +442,7 @@ func (d *detectorImpl) processDeploymentNoLock(deployment *storage.Deployment, a
 			}
 		}()
 	case central.ResourceAction_CREATE_RESOURCE:
+		log.Debugf("DAVE: ACTION - create - %q", deployment.Id)
 		d.deduper.addDeployment(deployment)
 		d.markDeploymentForProcessing(deployment.GetId())
 		go d.enricher.blockingScan(deployment, d.getNetworkPoliciesApplied(deployment), action)
@@ -450,6 +451,12 @@ func (d *detectorImpl) processDeploymentNoLock(deployment *storage.Deployment, a
 		// If not, then just return
 		if !d.deduper.needsProcessing(deployment) {
 			return
+		}
+		if action == central.ResourceAction_UPDATE_RESOURCE {
+			log.Debugf("DAVE: ACTION - update - %q", deployment.Id)
+
+		} else if action == central.ResourceAction_SYNC_RESOURCE {
+			log.Debugf("DAVE: ACTION - sync - %q", deployment.Id)
 		}
 		d.markDeploymentForProcessing(deployment.GetId())
 		go d.enricher.blockingScan(deployment, d.getNetworkPoliciesApplied(deployment), action)
