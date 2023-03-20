@@ -22,6 +22,7 @@ import (
 	"github.com/stackrox/rox/pkg/errox"
 	"github.com/stackrox/rox/pkg/expiringcache"
 	"github.com/stackrox/rox/pkg/features"
+	"github.com/stackrox/rox/pkg/grpc/authn"
 	"github.com/stackrox/rox/pkg/grpc/authz"
 	"github.com/stackrox/rox/pkg/grpc/authz/idcheck"
 	"github.com/stackrox/rox/pkg/grpc/authz/or"
@@ -381,6 +382,10 @@ func (s *serviceImpl) EnrichLocalImageInternal(ctx context.Context, request *v1.
 	}
 
 	defer s.internalScanSemaphore.Release(1)
+
+	id, _ := authn.IdentityFromContext(ctx)
+	log.Debugf("EnrichLocalImageInternal identity %+v", id)
+	log.Debugf("EnrichLocalImageInternal request %+v", request)
 
 	forceSigVerificationUpdate := true
 	forceScanUpdate := true

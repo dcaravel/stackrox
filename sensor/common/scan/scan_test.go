@@ -3,6 +3,7 @@ package scan
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	v1 "github.com/stackrox/rox/generated/api/v1"
@@ -113,19 +114,22 @@ func (suite *scanTestSuite) TestEnrichImageFailures() {
 			getMatchingRegistry: func(image *storage.ImageName) (registryTypes.Registry, error) {
 				return nil, errors.New("image doesn't match any registry")
 			},
+			enrichmentTriggered: false,
 		},
 		"fail retrieving image metadata": {
 			fakeImageServiceClient: suite.createMockImageServiceClient(nil, false),
 			getMatchingRegistry: func(image *storage.ImageName) (registryTypes.Registry, error) {
 				return &fakeRegistry{fail: true}, nil
 			},
+			enrichmentTriggered: true,
 		},
 		"fail scanning the image locally": {
 			fakeImageServiceClient: suite.createMockImageServiceClient(nil, false),
 			getMatchingRegistry: func(image *storage.ImageName) (registryTypes.Registry, error) {
 				return &fakeRegistry{fail: false}, nil
 			},
-			scanImg: failingScan,
+			scanImg:             failingScan,
+			enrichmentTriggered: true,
 		},
 		"fail enrich image via central": {
 			fakeImageServiceClient: suite.createMockImageServiceClient(nil, true),
@@ -143,6 +147,7 @@ func (suite *scanTestSuite) TestEnrichImageFailures() {
 			},
 			scanImg:                  successfulScan,
 			fetchSignaturesWithRetry: failingFetchSignatures,
+			enrichmentTriggered:      true,
 		},
 	}
 
@@ -151,6 +156,8 @@ func (suite *scanTestSuite) TestEnrichImageFailures() {
 
 	for name, c := range cases {
 		suite.Run(name, func() {
+			n := name
+			fmt.Println(n)
 			scanImg = c.scanImg
 			fetchSignaturesWithRetry = c.fetchSignaturesWithRetry
 			getMatchingRegistry = c.getMatchingRegistry
